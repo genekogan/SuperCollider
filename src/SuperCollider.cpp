@@ -66,7 +66,7 @@ string SuperColliderSynth::getInfo()
 
 SuperColliderSynth::~SuperColliderSynth()
 {
-    free();
+    //free();
 }
 
 ofParameter<float> & SuperColliderSynth::addParameter(string name, float value, float min, float max)
@@ -155,8 +155,8 @@ SuperCollider::~SuperCollider()
 {
     map<string,SuperColliderSynth*>::iterator it = synths.begin();
     while (it != synths.end()) {
-        delete it->second;
-        synths.erase(it);
+        //delete it->second;
+        //synths.erase(it);
     }
 }
 

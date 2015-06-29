@@ -1,63 +1,56 @@
-
-s.quit
-s.options.memSize = 65000
-s.boot
-
+(
+s.quit;
+s.options.memSize = 65000;
+s.boot;
+)
 
 
 (
 SynthDef(\bufWriter, {
-	arg rate=1, channel=0, bufnum, phasBuf, minSigBus, manual=0, manualGate=0;
+	arg rate=1, channel=0, bufnum, phasBuf, minSigBus, gateBus, manual=0, manualGate=0;
 	var in, avg, gate, phase;
 	in = SoundIn.ar(channel);
 	avg = Amplitude.kr(in, 20, 20);
-	gate = (manual * manualGate) + ((1 - manual)*(avg > In.kr(minSigBus)));
-	gate.poll(10).postln;
+	gate = (manual * manualGate) + ((1 - manual)*(avg > (0.001*In.kr(minSigBus))));
+//	[gate, avg, manual, manualGate, 0.001*In.kr(minSigBus)].poll(10).postln;
+	gate.poll(100).postln;
 	phase = Phasor.ar(gate, BufRateScale.kr(bufnum) * gate * rate, 0, BufFrames.kr(bufnum));
 	BufWr.ar(in, bufnum, phase);
 	Out.kr(phasBuf, phase);
-	0.0
+	Out.kr(gateBus, gate);
+	0.0;
 }).add;
 
 SynthDef(\bufReader, {
-	arg rate=1, bufnum, phasBuf, gain=1.0, hpf_freq=0, outBus=0;
-	var out, phase;
-	phase = Phasor.ar(1, BufRateScale.kr(bufnum) * rate, 0, In.kr(phasBuf));
+	arg rate=1, bufnum, phasBuf, outBus=0, gateBus, overlap;
+	var out, phase, isplay;
+	isplay = (1-overlap) * (1-In.kr(gateBus)) + overlap;
+	phase = Phasor.ar(1, BufRateScale.kr(bufnum) * rate * isplay, 0, In.kr(phasBuf));
 	out = BufRd.ar(1, bufnum, phase); //gain?
-	Out.ar(outBus, out!2);
-}).add;
-)
-
-
-
-
-
-
-
-
-(
-SynthDef(\bufReader, {
-	arg rate=1, bufnum, phasBuf, gain=1.0, hpf_freq=0, delayTime, decayTime;
-	var out, phase;
-	phase = Phasor.ar(1, BufRateScale.kr(bufnum) * rate, 0, In.kr(phasBuf));
-	out = HPF.ar(BufRd.ar(1, bufnum, phase), hpf_freq, gain);
-//	out = CombC.ar(out, 2.0, delayTime, decayTime);
-	out = DelayC.ar(out, 0.02, Saw.kr(0.1, 0.01, 0.01));
 	Out.ar(0, out!2);
 }).add;
-)
 
-(
-SynthDef(\bufReader, {
-	arg bufnum, phasBuf, gain=1.0, hpf_freq=0, delay=0.1, depth=0.08, rate=0.06, fdbk=0.0, decay=0.0, manualGate=0;
-	var out, input, phase, maxdelay, maxrate, dsig, mixed, local;
-	phase = Phasor.ar(1, BufRateScale.kr(bufnum), 0, In.kr(phasBuf));
-	out = HPF.ar(BufRd.ar(1, bufnum, phase), hpf_freq, gain);
 
-    maxdelay = 0.013;
+SynthDef(\bufComb, {
+	arg rate=1, bufnum, phasBuf, outBus=0, gateBus, overlap, delayTime, decayTime, gain;
+	var out, phase, isplay;
+	isplay = (1-overlap) * (1-In.kr(gateBus)) + overlap;
+	phase = Phasor.ar(1, BufRateScale.kr(bufnum) * rate * isplay, 0, In.kr(phasBuf));
+	out = CombC.ar(BufRd.ar(1, bufnum, phase), 2.0, delayTime, decayTime, gain);
+	Out.ar(0, out!2);
+}).add;
+
+SynthDef(\bufAllPass, {
+	arg bufnum, phasBuf, outBus=0, gateBus, overlap, delay=0.1, depth=0.08, rate=0.06, fdbk=0.0, decay=0.0;
+	var out, phase, isplay, input, maxdelay, maxrate, dsig, mixed, local;
+
+	isplay = (1-overlap) * (1-In.kr(gateBus)) + overlap;
+	phase = Phasor.ar(1, BufRateScale.kr(bufnum) * rate * isplay, 0, In.kr(phasBuf));
+
+	maxdelay = 0.013;
     maxrate = 10.0;
 
-	input = out;
+	input = BufRd.ar(1, bufnum, phase);
 	local = LocalIn.ar(1);
 
 	dsig = AllpassL.ar(
@@ -69,253 +62,27 @@ SynthDef(\bufReader, {
 			depth * maxdelay,
 			delay * maxdelay),
 		decay);
-	mixed = (input + dsig) * (1-manualGate);
+	mixed = (input + dsig);
 	LocalOut.ar(mixed);
-	Out.ar(0, mixed);
-}).add;
-)
-
-
-
-
-
-
-
-Synth(\bufWriter, [\bufnum, ~buf, \phasBuf, ~phasBuf, \channel, 0])
-Synth(\bufReader, [\bufnum, ~buf, \phasBuf, ~phasBuf])
-~minsig.set(0.1)
-
-
-
-
-/////======/////======/////======/////======/////======/////======/////======/////======/////======
-/////======/////======/////======/////======/////======/////======/////======/////======/////======
-
-
-~buf = Buffer.alloc(s, s.sampleRate * 2.0, 1);
-
-~phasBuf = Bus.control(s, 1);
-~minsig = Bus.control(s, 1);
-
-(
-SynthDef(\bufwr, {
-	arg rate=1, bufnum, phasBuf;
-	var in, avg, gate, phase;
-	in = SoundIn.ar(0);
-	avg = Amplitude.kr(in, 10, 10);
-	gate = (avg > 0.05);
-	gate.poll(20).postln;
-	phase = Phasor.ar(gate, BufRateScale.kr(bufnum) * gate * rate, 0, BufFrames.kr(bufnum));
-	BufWr.ar(in, bufnum, phase);
-	Out.kr(phasBuf, phase);
-	0.0
-}).add;
-)
-
-
-
-
-(
-SynthDef(\bufrd, {
-	arg rate=1, bufnum, phasBuf;
-	var out, phase;
-	phase = Phasor.ar(1, BufRateScale.kr(bufnum) * rate, 0, In.kr(phasBuf));
-	out = BufRd.ar(1, bufnum, phase);
-	Out.ar(0, out!2);
-}).add;
-)
-
-BufRateScale.kr(~buf)
-
-{Linen.kr(1, 1, In.kr(phasBuf), 0).poll(100).postln}.play
-
-(
-SynthDef(\bufrd2, {
-	arg rate=1, bufnum, phasBuf, pulse=1;
-	var out, pos, gate;
-	gate = Impulse.kr(pulse);
-	pos = K2A.ar(Linen.kr(gate, In.kr(phasBuf)/s.sampleRate, In.kr(phasBuf), 0));
-	out = BufRd.ar(1, bufnum, pos);
-	Out.ar(0, out!2);
-}).add;
-)
-
-
-(
-SynthDef(\bufrd3, {
-	arg rate=1, bufnum, phasBuf;
-	var env, out;
-	env = EnvGen.kr(Env([0, 1, 1, 0], [0.05, In.kr(phasBuf)/s.sampleRate - 0.1, 0.05]), doneAction: 2);
-	out = env * PlayBuf.ar(1, bufnum);
-	Out.ar(0, out!2);
-}).add;
-)
-
-
-
-
-
-
-~minsig.set(1.0)
-~w = Synth(\bufwr, [\bufnum,~buf, \phasBuf, ~phasBuf])
-~r = Synth(\bufrd, [\bufnum, ~buf, \phasBuf, ~phasBuf])
-
-~r = Synth(\bufrd2, [\bufnum, ~buf, \phasBuf, ~phasBuf])
-~r.set(\pulse, 0.2)
-
-
-(Task(({
-	8.do({
-	Synth(\bufrd3, [\bufnum, ~buf, \phasBuf, ~phasBuf]);
-	0.3.wait;
-	Synth(\bufrd3, [\bufnum, ~buf, \phasBuf, ~phasBuf]);
-	0.3.wait;
-	Synth(\bufrd3, [\bufnum, ~buf, \phasBuf, ~phasBuf]);
-	0.3.wait;
-	Synth(\bufrd3, [\bufnum, ~buf, \phasBuf, ~phasBuf]);
-	0.3.wait;
-	Synth(\bufrd3, [\bufnum, ~buf, \phasBuf, ~phasBuf]);
-	0.3.wait;
-	Synth(\bufrd3, [\bufnum, ~buf, \phasBuf, ~phasBuf]);
-	0.3.wait;
-	Synth(\bufrd3, [\bufnum, ~buf, \phasBuf, ~phasBuf]);
-	0.3.wait;
-	Synth(\bufrd3, [\bufnum, ~buf, \phasBuf, ~phasBuf]);
-	0.3.wait;
-	Synth(\bufrd3, [\bufnum, ~buf, \phasBuf, ~phasBuf]);
-	0.3.wait;
-	Synth(\bufrd3, [\bufnum, ~buf, \phasBuf, ~phasBuf]);
-	})
-})).play
-)
-
-~w.free
-~r.free
-
-
-/////======/////======/////======/////======/////======/////======/////======/////======/////======
-/////======/////======/////======/////======/////======/////======/////======/////======/////======
-
-
-(
-~buf = [ Buffer.alloc(s, s.sampleRate * 2.0, 1),
-	Buffer.alloc(s, s.sampleRate * 2.0, 1),
-	Buffer.alloc(s, s.sampleRate * 2.0, 1),
-	Buffer.alloc(s, s.sampleRate * 2.0, 1)];
-
-~phasBuf = [ Bus.control(s, 1), Bus.control(s, 1), Bus.control(s, 1), Bus.control(s, 1) ];
-~minsig = Bus.control(s, 1);
-)
-
-
-(
-SynthDef(\bufwr, {
-	arg rate=1, bufnum, phasBuf;
-	var in, avg, gate, phase;
-	in = SoundIn.ar(0);
-	avg = Amplitude.kr(in, 10, 10);
-	gate = (avg > 0.05);
-	gate.poll(20).postln;
-	phase = Phasor.ar(gate, BufRateScale.kr(bufnum) * gate * rate, 0, BufFrames.kr(bufnum));
-	BufWr.ar(in, bufnum, phase);
-	Out.kr(phasBuf, phase);
-	0.0
+	Out.ar(outBus, mixed);
 }).add;
 
-SynthDef(\bufrd, {
-	arg rate=1, bufnum, phasBuf;
-	var env, out;
-	env = EnvGen.kr(Env([0, 1, 1, 0], [0.05, In.kr(phasBuf)/s.sampleRate - 0.1, 0.05]), doneAction: 2);
-	out = env * PlayBuf.ar(1, bufnum);
-	Out.ar(0, out!2);
-}).add;
-)
 
-
-(
-OSCFunc({arg msg; ~w0 = Synth(\bufwr, [\bufnum, ~buf[0], \phasBuf, ~phasBuf[0]])}, '/rec0/', nil);
-OSCFunc({arg msg; ~w1 = Synth(\bufwr, [\bufnum, ~buf[1], \phasBuf, ~phasBuf[1]])}, '/rec1/', nil);
-OSCFunc({arg msg; ~w2 = Synth(\bufwr, [\bufnum, ~buf[2], \phasBuf, ~phasBuf[2]])}, '/rec2/', nil);
-OSCFunc({arg msg; ~w3 = Synth(\bufwr, [\bufnum, ~buf[3], \phasBuf, ~phasBuf[3]])}, '/rec3/', nil);
-OSCFunc({arg msg; ~w0.free }, '/stop0/', nil);
-OSCFunc({arg msg; ~w1.free }, '/stop1/', nil);
-OSCFunc({arg msg; ~w2.free }, '/stop2/', nil);
-OSCFunc({arg msg; ~w3.free }, '/stop3/', nil);
-OSCFunc({arg msg; ~r0 = Synth(\bufrd, [\bufnum, ~buf[0], \phasBuf, ~phasBuf[0]])}, '/play0/', nil);
-OSCFunc({arg msg; ~r1 = Synth(\bufrd, [\bufnum, ~buf[1], \phasBuf, ~phasBuf[1]])}, '/play1/', nil);
-OSCFunc({arg msg; ~r2 = Synth(\bufrd, [\bufnum, ~buf[2], \phasBuf, ~phasBuf[2]])}, '/play2/', nil);
-OSCFunc({arg msg; ~r3 = Synth(\bufrd, [\bufnum, ~buf[3], \phasBuf, ~phasBuf[3]])}, '/play3/', nil);
-OSCFunc({arg msg; ~r0.free }, '/pause0/', nil);
-OSCFunc({arg msg; ~r1.free }, '/pause1/', nil);
-OSCFunc({arg msg; ~r2.free }, '/pause2/', nil);
-OSCFunc({arg msg; ~r3.free }, '/pause3/', nil);
-)
-
-
-
-
-
-
-/////======/////======/////======/////======/////======/////======/////======/////======/////======
-/////======/////======/////======/////======/////======/////======/////======/////======/////======
-
-
-s.boot
-h={Sound In.ar(0)}.play
-h.free
-(
-~buf = [ Buffer.alloc(s, s.sampleRate * 4.0, 1),
-	Buffer.alloc(s, s.sampleRate * 4.0, 1),
-	Buffer.alloc(s, s.sampleRate * 4.0, 1),
-	Buffer.alloc(s, s.sampleRate * 4.0, 1)];
-
-~phasBuf = [ Bus.control(s, 1), Bus.control(s, 1), Bus.control(s, 1), Bus.control(s, 1) ];
-~minsig = Bus.control(s, 1);
-)
-
-
-(
-SynthDef(\bufwr, {
-	arg rate=1, bufnum, innum=0, phasBuf;
-	var in, avg, gate, phase;
-	in = SoundIn.ar(innum);
-	avg = Amplitude.kr(in, 10, 10);
-	gate = (avg > In.kr(~minsig));
-	gate.poll(20).postln;
-	phase = Phasor.ar(gate, BufRateScale.kr(bufnum) * gate * rate, 0, BufFrames.kr(bufnum));
-	BufWr.ar(in, bufnum, phase);
-	Out.kr(phasBuf, phase);
-	0.0
+SynthDef(\bufGrains, {
+	arg rate=1, bufnum, phasBuf, outBus=0, gateBus, overlap, trate=20, width=12, dispersion=0.01, position=0.5;
+	var out, phase, isplay, dur, clk, pos, pan;
+	isplay = (1-overlap) * (1-In.kr(gateBus)) + overlap;
+	phase = Phasor.ar(1, BufRateScale.kr(bufnum) * rate * isplay, 0, In.kr(phasBuf));
+    dur = width / trate;
+    clk = Impulse.kr(trate);
+//    pos = MouseX.kr(0, BufDur.kr(bufnum)) + TRand.kr(0, dispersion, clk);
+	pos = BufDur.kr(bufnum) * (position + TRand.kr(0, dispersion, clk));
+    pan = WhiteNoise.kr(0.6);
+    out = TGrains.ar(2, clk, bufnum, 1, pos, dur, pan, 0.1);
+	Out.ar(outBus, out);
 }).add;
 
-SynthDef(\bufrd, {
-	arg rate=1, bufnum, phasBuf;
-	var env, out;
-	env = EnvGen.kr(Env([0, 1, 1, 0], [0.05, In.kr(phasBuf)/s.sampleRate - 0.1, 0.05]), doneAction: 2);
-	out = env * PlayBuf.ar(1, bufnum);
-	Out.ar(0, out!2);
-}).add;
+
 )
 
 
-~minsig.set(0.01)
-
-(
-OSCFunc({arg msg; ~w0 = Synth(\bufwr, [\bufnum, ~buf[0], \phasBuf, ~phasBuf[0], \innum, msg[1]])}, '/rec0/', nil);
-OSCFunc({arg msg; ~w1 = Synth(\bufwr, [\bufnum, ~buf[1], \phasBuf, ~phasBuf[1], \innum, msg[1]])}, '/rec1/', nil);
-OSCFunc({arg msg; ~w2 = Synth(\bufwr, [\bufnum, ~buf[2], \phasBuf, ~phasBuf[2], \innum, msg[1]])}, '/rec2/', nil);
-OSCFunc({arg msg; ~w3 = Synth(\bufwr, [\bufnum, ~buf[3], \phasBuf, ~phasBuf[3], \innum, msg[1]])}, '/rec3/', nil);
-OSCFunc({arg msg; ~w0.free }, '/stop0/', nil);
-OSCFunc({arg msg; ~w1.free }, '/stop1/', nil);
-OSCFunc({arg msg; ~w2.free }, '/stop2/', nil);
-OSCFunc({arg msg; ~w3.free }, '/stop3/', nil);
-OSCFunc({arg msg; ~r0 = Synth(\bufrd, [\bufnum, ~buf[0], \phasBuf, ~phasBuf[0]])}, '/play0/', nil);
-OSCFunc({arg msg; ~r1 = Synth(\bufrd, [\bufnum, ~buf[1], \phasBuf, ~phasBuf[1]])}, '/play1/', nil);
-OSCFunc({arg msg; ~r2 = Synth(\bufrd, [\bufnum, ~buf[2], \phasBuf, ~phasBuf[2]])}, '/play2/', nil);
-OSCFunc({arg msg; ~r3 = Synth(\bufrd, [\bufnum, ~buf[3], \phasBuf, ~phasBuf[3]])}, '/play3/', nil);
-)
-
-/*
-// processing code
-// goes with BufOSC.pde
-*/
