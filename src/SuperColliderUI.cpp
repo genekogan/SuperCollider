@@ -29,7 +29,20 @@ void SuperColliderUI::setupGui()
                            itp->second->getParameter().getMax(),
                            itp->second->getParameter());
         }
-        
+
+        map<string,SuperColliderSynthGate*>::iterator itg = it->second->getGates().begin();
+        for (; itg != it->second->getGates().end(); ++itg)
+        {
+            if (itg->second->isTrigger()) {
+                gui->addButton(itg->second->getParameter().getName(),
+                               itg->second->getParameter());
+            }
+            else {
+                gui->addToggle(itg->second->getParameter().getName(),
+                               itg->second->getParameter());
+            }
+        }
+
         vector<string> availableBuffers, availableControlBusses, availableAudioBusses;
         map<string,ofxSCBuffer*>::iterator itbf = buffers.begin();
         map<string,ofxSCBus*>::iterator itkb = bussesK.begin();
@@ -94,7 +107,12 @@ void SuperColliderUI::guiEvent(ofxUIEventArgs & evt)
             }
         }
         
-        // nothing left -- go to parameter
-        synths[evt.getCanvasParentName()]->getParameters()[evt.getName()]->getParameter().set(evt.getSlider()->getValue());
+        // go to parameters/gaes
+        if (synths[evt.getCanvasParentName()]->getGates().count(evt.getName()) != 0) {
+            synths[evt.getCanvasParentName()]->getGates()[evt.getName()]->getParameter().set(evt.getButton()->getValue());
+        }
+        else if (synths[evt.getCanvasParentName()]->getParameters().count(evt.getName()) != 0) {
+            synths[evt.getCanvasParentName()]->getParameters()[evt.getName()]->getParameter().set(evt.getSlider()->getValue());
+        }
     }
 }

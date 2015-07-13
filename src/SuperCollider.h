@@ -17,6 +17,19 @@ private:
     ofParameter<float> parameter;
 };
 
+class SuperColliderSynthGate
+{
+public:
+    SuperColliderSynthGate(ofxSCSynth *synth, string name, bool trigger);
+    void parameterChanged(bool & v);
+    ofParameter<bool> & getParameter() {return parameter;}
+    bool isTrigger() {return trigger;}
+private:
+    ofxSCSynth *synth;
+    ofParameter<bool> parameter;
+    bool trigger;
+};
+
 
 class SuperColliderSynth
 {
@@ -30,11 +43,14 @@ public:
     ofxSCGroup * getGroup() {return group;}
     ofxSCSynth * getSynth() {return synth;}
     map<string,SuperColliderSynthParameter*> & getParameters() {return parameters;}
+    map<string,SuperColliderSynthGate*> & getGates() {return gates;}
     vector<string> & getBuffers() {return buffers;}
     vector<string> & getControlBusses() {return controlBusses;}
     vector<string> & getAudioBusses() {return audioBusses;}
 
     ofParameter<float> & addParameter(string name, float value, float min, float max);
+    ofParameter<bool> & addGate(string name);
+    ofParameter<bool> & addTrigger(string name);
     void addBuffer(string name);
     void addControlBus(string name);
     void addAudioBus(string name);
@@ -53,6 +69,7 @@ protected:
     ofxSCGroup *group;
     
     map<string,SuperColliderSynthParameter*> parameters;
+    map<string,SuperColliderSynthGate*> gates;
     vector<string> buffers;
     vector<string> controlBusses;
     vector<string> audioBusses;

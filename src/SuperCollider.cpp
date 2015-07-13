@@ -13,6 +13,19 @@ void SuperColliderSynthParameter::parameterChanged(float & v)
     synth->set(parameter.getName(), parameter);
 }
 
+SuperColliderSynthGate::SuperColliderSynthGate(ofxSCSynth *synth, string name, bool trigger)
+{
+    this->synth = synth;
+    this->trigger = trigger;
+    parameter.set(name, false);
+    parameter.addListener(this, &SuperColliderSynthGate::parameterChanged);
+}
+
+void SuperColliderSynthGate::parameterChanged(bool & v)
+{
+    synth->set(parameter.getName(), parameter ? 1 : 0);
+}
+
 SuperColliderSynth::SuperColliderSynth(string name, ofxSCGroup *group)
 {
     this->group = group;
@@ -67,6 +80,26 @@ string SuperColliderSynth::getInfo()
 SuperColliderSynth::~SuperColliderSynth()
 {
     //free();
+}
+
+ofParameter<bool> & SuperColliderSynth::addGate(string name)
+{
+    SuperColliderSynthGate *newGate = new SuperColliderSynthGate(synth, name, true);
+    if (gates.count(name) > 0) {
+        delete gates[name];
+    }
+    gates[name] = newGate;
+    return newGate->getParameter();
+}
+
+ofParameter<bool> & SuperColliderSynth::addTrigger(string name)
+{
+    SuperColliderSynthGate *newGate = new SuperColliderSynthGate(synth, name, false);
+    if (gates.count(name) > 0) {
+        delete gates[name];
+    }
+    gates[name] = newGate;
+    return newGate->getParameter();
 }
 
 ofParameter<float> & SuperColliderSynth::addParameter(string name, float value, float min, float max)
@@ -155,9 +188,10 @@ SuperCollider::~SuperCollider()
 {
     map<string,SuperColliderSynth*>::iterator it = synths.begin();
     while (it != synths.end()) {
-        //delete it->second;
-        //synths.erase(it);
+        delete it->second;
+        ++it;
     }
+    synths.clear();
 }
 
 void SuperCollider::draw()
@@ -192,6 +226,12 @@ void SuperCollider::readFromFile(string synthType, string synthFile, ofxSCGroup 
             else if (statement[0] == "@param") {
                 float initialValue = statement.size() > 4 ? ofToFloat(statement[4]) : 0.5 * (ofToFloat(statement[2]), ofToFloat(statement[3]));
                 newSynth->addParameter(statement[1], initialValue, ofToFloat(statement[2]), ofToFloat(statement[3]));
+            }
+            else if (statement[0] == "@gate") {
+                newSynth->addGate(statement[1]);
+            }
+            else if (statement[0] == "@trigger") {
+                newSynth->addTrigger(statement[1]);
             }
             else if (statement[0] == "@controlBus") {
                 newSynth->addControlBus(statement[1]);
