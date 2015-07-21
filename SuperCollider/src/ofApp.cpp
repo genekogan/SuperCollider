@@ -8,16 +8,20 @@ void ofApp::setup(){
     effects1 = sc3.addGroup("effects1");
     effects2 = sc3.addGroup("effects2");
     
-    buffer = sc3.addBuffer("buffy", 16 * 44100, 1);
+    buffer = sc3.addBuffer("buffy3", 4 * 44100, 1);
+
+    //buffer->read("/Users/gene/Audio/FieldRec/delaplane VA/fencewires_mono.wav");
+    buffer->read("/Users/gene/Audio/FieldRec/germany/woodblocks_in_koblenz_mono.wav");
+    
     minSigBus = sc3.addControlBus("min sig", 1);
     phaseBus = sc3.addControlBus("phase", 1);
     audioBus1 = sc3.addAudioBus("audioOut1", 1);
     audioBus2 = sc3.addAudioBus("audioOut2", 1);
 
-    sc3.readFromFile("source", "/Users/gene/Code/of_v0.8-4.4_osx_release/tools_veryold/SuperCollider/synths.scd", synths);
-    sc3.readFromFile("modifier", "/Users/gene/Code/of_v0.8-4.4_osx_release/tools_veryold/SuperCollider/synths.scd", effects1);
-    sc3.readFromFile("modifier", "/Users/gene/Code/of_v0.8-4.4_osx_release/tools_veryold/SuperCollider/synths.scd", effects2);
-
+    sc3.readFromFile("source", "/Users/gene/Code/of_v0.8-4.4_osx_release/of-tools/SuperCollider/synths.scd", synths);
+    sc3.readFromFile("modifier", "/Users/gene/Code/of_v0.8-4.4_osx_release/of-tools/SuperCollider/synths.scd", effects1);
+    sc3.readFromFile("modifier", "/Users/gene/Code/of_v0.8-4.4_osx_release/of-tools/SuperCollider/synths.scd", effects2);
+    
     /*
     // buffer writer
     bufWriter = sc3.addSynth("bufWriter");

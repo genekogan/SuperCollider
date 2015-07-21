@@ -4,7 +4,7 @@
 void ofApp::setup(){
     //ofSetWindowShape(480, 560);
     
-    buffer = sc3.addBuffer("buffy", 16*44100, 1);
+    buffer = sc3.addBuffer("buffy", 10*44100, 1);
     phaseBus = sc3.addControlBus("phasBus", 1);
     gateBus = sc3.addControlBus("gateBus", 1);
     minSigBus = sc3.addControlBus("minSigBus", 1);
@@ -57,6 +57,7 @@ void ofApp::setup(){
     grains->set("gateBus", gateBus->index);
     grains->set("overlap", 0);
     grains->set("outBus", 0);
+    grains->set("gain", 1.0);
 
     // create
     bufWriter->create();
@@ -95,6 +96,7 @@ void ofApp::setup(){
     guiGrains->addSlider("trate", 1, 200, 20);
     guiGrains->addSlider("width", 1, 40, 12);
     guiGrains->addSlider("dispersion", 0, 1, 0.01);
+    guiGrains->addSlider("gain", 0, 5, 1);
 
     ///////
     gui->autoSizeToFitWidgets();

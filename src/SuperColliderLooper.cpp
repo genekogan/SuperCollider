@@ -75,7 +75,8 @@ void SuperColliderLoopElement::guiEvent(ofxUIEventArgs &e) {
         bufWriter->set("channel", channel);
     }
     else if (e.getName() == "Volume") {
-        
+        cout << "write vol " << volume << endl;
+        bufReader->set("volume", volume);
     }
 }
 

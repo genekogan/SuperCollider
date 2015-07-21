@@ -5,10 +5,9 @@
 #include "ofxUI.h"
 #include "SuperCollider.h"
 
+
 /*
- Server.local.prepareForRecord;
- Server.local.record;
- Server.local.stopRecording;
+ // run this code in supercollider first!!!
  
  SynthDef(\buf_recorder, {
 	arg bufnum, channel=0;
@@ -16,11 +15,10 @@
  }).add;
  
  SynthDef(\buf_player, {
-	arg out=0, bufnum, rate=1;
-	var snd = PlayBuf.ar(1, bufnum, rate, loop:0, doneAction:2);
+	arg out=0, bufnum, rate=1, volume=1;
+	var snd = volume * PlayBuf.ar(1, bufnum, rate, loop:0, doneAction:2);
 	OffsetOut.ar(out, snd!2)
  }).add;
- 
  
  */
 

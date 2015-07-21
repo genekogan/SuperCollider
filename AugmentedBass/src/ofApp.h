@@ -30,6 +30,7 @@ public:
             minSigBus->set(evt.getSlider()->getValue());
         }
         else if (evt.getName() == "Playback") {
+            cout << "CREATE "<<evt.getToggle()->getValue() << endl;
             evt.getToggle()->getValue() ? bufReader->create() : bufReader->free();
         }
     }
@@ -57,6 +58,7 @@ public:
             evt.getToggle()->getValue() ? grains->create() : grains->free();
         }
         else {
+            cout << "set grains " << evt.getName() << " " <<evt.getSlider()->getValue() << endl;
             grains->set(evt.getName(), evt.getSlider()->getValue());
         }
     }
